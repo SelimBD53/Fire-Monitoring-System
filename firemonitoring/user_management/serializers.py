@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import UserProfile, Company
 from django.contrib.auth.models import User
-
+import random
+from .sms_otp import send_sms
 class CompanySerializers(serializers.ModelSerializer):
     class Meta:
         model = Company
@@ -34,12 +35,13 @@ class UserProfileSerializers(serializers.ModelSerializer):
                     raise serializers.ValidationError({"message": "Email Already Exist!"})
         if 'phone' in data:
             phone = data['phone']
-            if len(phone) < 11:
-                raise serializers.ValidationError({"message": "Phone Number Must be at least 11 digits long"})
+            if len(phone) != 11 or not phone.startswith('01') :
+                raise serializers.ValidationError({"message": "Phone Number is incorrect"})
         return data
     
     def create(self, validated_data):
         try:
+            otp_code = str(random.randint(100000, 999999))
             user = validated_data.pop('user')
             firstname = user.get('first_name')
             lastname = user.get('last_name')
@@ -48,7 +50,7 @@ class UserProfileSerializers(serializers.ModelSerializer):
             user_instance = User.objects.create(**user)
             
             company_data = validated_data.pop('company', None)
-            
+
             if not company_data:
                 raise serializers.ValidationError({"message": "Company data is required!"})
             
@@ -58,8 +60,10 @@ class UserProfileSerializers(serializers.ModelSerializer):
             else:
                 company_instance = Company.objects.create(**company_data)
 
-            user_profile = UserProfile.objects.create(user=user_instance, company=company_instance, **validated_data)
+            user_profile = UserProfile.objects.create(user=user_instance, company=company_instance, otp=otp_code, **validated_data)
             user_profile.save()
+            message = f"Dear {firstname} Registration verification OTP is {otp_code}"
+            send_sms(phone, message)
             return user_profile
         
         except Exception as e:

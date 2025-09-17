@@ -19,6 +19,7 @@ class UserProfile(models.Model):
     # role = models.CharField(max_length=50, choices=ROLE, null=True, blank=True)
     phone = models.CharField(max_length=15)
     address = models.TextField()
+    otp = models.CharField(max_length=10, blank=True, null=True)
     profile_pic = ResizedImageField(size=[300, 300], upload_to='profile_pics', null=True, blank=True, force_format='webp', quality=100)
   
     def __str__(self):
